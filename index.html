@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Daily Budget</title>
+<meta name="description" content="A daily spending budget that rolls over.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Daily Budget">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+:root {
+  --bg: #ffffff;
+  --grouped: #f2f2f7;
+  --card: #ffffff;
+  --text: #000000;
+  --secondary: rgba(60, 60, 67, 0.6);
+  --fill: rgba(118, 118, 128, 0.12);
+  --fill-strong: rgba(118, 118, 128, 0.2);
+  --sep: rgba(60, 60, 67, 0.18);
+  --bar: rgba(249, 249, 249, 0.92);
+  --material: rgba(255, 255, 255, 0.72);
+  --green: #34c759;
+  --red: #ff3b30;
+  --orange: #ff9500;
+  --purple: #af52de;
+  --shadow: rgba(0, 0, 0, 0.15);
+  --accent: #34c759;
+  --c1: #34c759;
+  --c2: #00c7be;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --grouped: #000000; --card: #1c1c1e; --text: #ffffff;
+    --secondary: rgba(235, 235, 245, 0.6); --fill: rgba(118, 118, 128, 0.24); --fill-strong: rgba(118, 118, 128, 0.36);
+    --sep: rgba(84, 84, 88, 0.6); --bar: rgba(22, 22, 22, 0.9); --material: rgba(44, 44, 46, 0.8);
+    --green: #30d158; --red: #ff453a; --orange: #ff9f0a; --purple: #bf5af2; --shadow: rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --grouped: #000000; --card: #1c1c1e; --text: #ffffff;
+  --secondary: rgba(235, 235, 245, 0.6); --fill: rgba(118, 118, 128, 0.24); --fill-strong: rgba(118, 118, 128, 0.36);
+  --sep: rgba(84, 84, 88, 0.6); --bar: rgba(22, 22, 22, 0.9); --material: rgba(44, 44, 46, 0.8);
+  --green: #30d158; --red: #ff453a; --orange: #ff9f0a; --purple: #bf5af2; --shadow: rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 17px; line-height: 1.3;
+  -webkit-font-smoothing: antialiased; -webkit-user-select: none; user-select: none;
+  overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input, select { font: inherit; color: var(--text); -webkit-user-select: text; user-select: text; }
+svg.i { width: 1.1em; height: 1.1em; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.rounded { font-family: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif; }
+.mono { font-variant-numeric: tabular-nums; }
+.sec { color: var(--secondary); }
+.tint { color: var(--accent); }
+
+/* ---------- Pages ---------- */
+#app { position: fixed; inset: 0; display: flex; flex-direction: column; }
+.pager { flex: 1; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.pager::-webkit-scrollbar { display: none; }
+.page {
+  flex: 0 0 100%; height: 100%; overflow-y: auto; overflow-x: hidden; scroll-snap-align: start; scroll-snap-stop: always;
+  -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain;
+  background:
+    radial-gradient(380px 420px at 50% 0, color-mix(in srgb, var(--accent) 18%, transparent), transparent),
+    linear-gradient(to bottom, color-mix(in srgb, var(--accent) 20%, transparent), transparent 420px),
+    var(--bg);
+  background-repeat: no-repeat;
+}
+.content { max-width: 560px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 16px) 16px 32px; display: flex; flex-direction: column; gap: 24px; align-items: center; }
+.titlebar { width: 100%; display: flex; align-items: center; gap: 16px; }
+.titlebar h1 { font-size: 34px; font-weight: 700; margin: 0; flex: 1; letter-spacing: 0.01em; }
+.iconbtn { color: var(--accent); font-size: 22px; display: grid; place-items: center; width: 36px; height: 36px; }
+.iconbtn svg.i { stroke-width: 2.4; }
+
+/* ---------- Tab bar ---------- */
+.tabbar {
+  display: flex; padding: 8px 0 max(env(safe-area-inset-bottom), 8px);
+  background: var(--bar); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border-top: 0.5px solid var(--sep);
+}
+.tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--secondary); font-size: 11px; font-weight: 500; }
+.tabbar button svg.i { width: 24px; height: 24px; }
+.tabbar button.on { color: var(--accent); }
+
+/* ---------- Today ---------- */
+.subline { font-size: 15px; color: var(--secondary); text-align: center; margin-top: -8px; }
+.weekline { font-size: 15px; font-weight: 600; margin-top: -20px; }
+.weekline.over { color: var(--red); }
+.circle {
+  width: 280px; height: 280px; border-radius: 50%; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: linear-gradient(135deg, var(--c1), var(--c2));
+  box-shadow: 0 10px 40px color-mix(in srgb, var(--c1) 40%, transparent);
+  transition: transform 0.25s cubic-bezier(.3,1.6,.5,1);
+  padding: 24px;
+}
+.circle.over { background: linear-gradient(135deg, #ff3b30, #ff9500); box-shadow: 0 10px 40px rgba(255, 59, 48, 0.4); }
+.circle:active { transform: scale(0.94); }
+.circle .amt { font-size: 54px; font-weight: 700; white-space: nowrap; line-height: 1.1; }
+.circle .hint { font-size: 13px; font-weight: 500; opacity: 0.85; }
+.circle.bump .amt { animation: bump 0.3s ease; }
+@keyframes bump { 40% { transform: translateY(-4px); opacity: 0.6; } }
+.capsule {
+  color: var(--accent); font-weight: 600; padding: 12px 18px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px;
+  background: var(--material); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow: 0 0 0 0.5px var(--sep);
+}
+.capsule:active { opacity: 0.6; }
+.section { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.section h2 { font-size: 17px; font-weight: 600; margin: 0; }
+.chips { display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 0 16px; scrollbar-width: none; overscroll-behavior-x: contain; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 130px; text-align: left; padding: 12px; border-radius: 14px; display: flex; flex-direction: column; gap: 6px;
+  background: color-mix(in srgb, var(--k) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k) 40%, transparent);
+}
+.chip .when { color: var(--k); font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.chip .when svg.i { width: 12px; height: 12px; }
+.chip .t { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip .a { font-size: 13px; color: var(--secondary); }
+.row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--fill); text-align: left; }
+.row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .small { font-size: 12px; color: var(--secondary); display: flex; align-items: center; gap: 4px; }
+.row .small svg.i { width: 11px; height: 11px; }
+.row .note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .note.empty { color: var(--secondary); font-style: italic; }
+.added { color: var(--green); }
+.undo { color: var(--accent); font-size: 22px; display: grid; place-items: center; }
+.kindicon { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--k); flex: none; }
+.kindicon svg.i { width: 16px; height: 16px; }
+.linkbtn { color: var(--accent); font-size: 15px; font-weight: 500; padding: 6px; align-self: center; }
+
+/* ---------- Calendar ---------- */
+.calhead { width: 100%; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; }
+.calhead .m { font-size: 20px; font-weight: 600; }
+.calhead .s { font-size: 12px; color: var(--secondary); margin-top: 4px; }
+.calhead button { color: var(--accent); font-size: 20px; height: 44px; display: grid; place-items: center; }
+.weekdays, .grid { width: 100%; display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.weekdays div { text-align: center; font-size: 12px; font-weight: 600; color: var(--secondary); }
+.cal-tight { gap: 16px !important; }
+.day {
+  height: 76px; border-radius: 10px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; gap: 3px; overflow: hidden;
+  background: color-mix(in srgb, var(--k, transparent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k, transparent) 60%, transparent);
+}
+.day.sel { box-shadow: inset 0 0 0 2.5px var(--accent); }
+.day .n { font-size: 16px; }
+.day .n.b { font-weight: 700; }
+.day .n.today { color: var(--accent); font-weight: 700; }
+.day .pill { width: 100%; font-size: 9px; font-weight: 600; color: #fff; border-radius: 99px; padding: 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--k); line-height: 1.5; }
+.day .more { font-size: 8px; color: var(--secondary); }
+.day .money { margin-top: auto; font-size: 9px; font-weight: 500; white-space: nowrap; }
+.day .money.neg { color: var(--red); }
+.day .money.pos { color: var(--green); }
+
+/* ---------- Sheets ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); opacity: 0; transition: opacity 0.3s; z-index: 10; }
+.scrim.show { opacity: 1; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; max-width: 560px; margin: 0 auto;
+  background: var(--grouped); border-radius: 14px 14px 0 0; transform: translateY(100%); transition: transform 0.35s cubic-bezier(.2,.9,.3,1);
+  display: flex; flex-direction: column; max-height: calc(100% - env(safe-area-inset-top) - 10px);
+  box-shadow: 0 -4px 30px var(--shadow);
+}
+.sheet.full { height: calc(100% - env(safe-area-inset-top) - 10px); }
+.sheet.plain { background: var(--bg); }
+.sheet.show { transform: none; }
+.sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--fill-strong); margin: 6px auto 0; flex: none; }
+.sheet .body { overflow-y: auto; flex: 1; padding: 0 16px calc(env(safe-area-inset-bottom) + 20px); -webkit-overflow-scrolling: touch; }
+.navbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 10px 16px; flex: none; }
+.navbar .ttl { font-weight: 600; font-size: 17px; }
+.navbar .l { justify-self: start; color: var(--accent); display: flex; align-items: center; gap: 2px; }
+.navbar .r { justify-self: end; color: var(--accent); font-weight: 600; }
+.navbar button:disabled { opacity: 0.35; }
+
+/* grouped form, iOS-style */
+.group-h { font-size: 13px; color: var(--secondary); text-transform: uppercase; margin: 22px 16px 6px; letter-spacing: 0.02em; }
+.group { background: var(--card); border-radius: 10px; overflow: hidden; }
+.group + .group { margin-top: 22px; }
+.group-f { font-size: 13px; color: var(--secondary); margin: 6px 16px 0; line-height: 1.35; }
+.cell { min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 8px 16px; position: relative; width: 100%; text-align: left; }
+.cell + .cell::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 0.5px solid var(--sep); }
+.cell .lbl { flex: 1; min-width: 0; }
+.cell .lbl small { display: block; color: var(--secondary); font-size: 13px; }
+.cell .val { color: var(--secondary); }
+.cell input.num, .cell input.txt, .cell select, .cell input[type="date"] { border: 0; background: transparent; text-align: right; outline: none; min-width: 0; }
+.cell input.num { width: 9em; }
+.cell input.txt { flex: 1; text-align: left; }
+.cell input::placeholder { color: var(--secondary); opacity: 0.7; }
+.cell select { -webkit-appearance: none; appearance: none; color: var(--secondary); padding-right: 2px; }
+.cell.btn { color: var(--accent); }
+.cell.btn.destructive { color: var(--red); justify-content: center; }
+.cell.btn.center { justify-content: center; }
+.cell .chev { color: var(--secondary); opacity: 0.6; font-size: 14px; }
+.cell .bigval { font-weight: 700; }
+.seg { display: flex; background: var(--fill); border-radius: 9px; padding: 2px; width: 100%; }
+.seg button { flex: 1; padding: 6px 4px; border-radius: 7px; font-size: 13px; font-weight: 500; }
+.seg button.on { background: var(--card); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04); font-weight: 600; }
+:root[data-theme="dark"] .seg button.on { background: #636366; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg button.on { background: #636366; } }
+.toggle { width: 51px; height: 31px; border-radius: 16px; background: var(--fill-strong); position: relative; transition: background 0.2s; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.15); transition: transform 0.2s; }
+.toggle.on { background: var(--green); }
+.toggle.on::after { transform: translateX(20px); }
+.stepper { display: flex; background: var(--fill); border-radius: 8px; flex: none; }
+.stepper button { width: 46px; height: 32px; font-size: 20px; }
+.stepper button + button { border-left: 0.5px solid var(--sep); }
+.themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 14px 8px; }
+.themes button { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; }
+.themes .dot { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 20px; }
+.themes .dot svg.i { stroke-width: 3; }
+.planbig { text-align: center; padding: 10px 0; }
+.planbig .v { font-size: 44px; font-weight: 700; color: var(--accent); }
+.fullapp { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.fullapp .f { display: flex; gap: 12px; align-items: center; font-size: 15px; }
+.fullapp .f .kindicon { background: var(--accent); }
+
+/* amount keypad */
+.keypad-wrap { display: flex; flex-direction: column; gap: 18px; padding-top: 6px; min-height: 100%; }
+.bigamt { font-size: 56px; font-weight: 700; text-align: center; white-space: nowrap; }
+.bigamt.zero { color: var(--secondary); }
+.keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.keys button { min-height: 64px; border-radius: 16px; background: var(--fill); font-size: 28px; font-weight: 500; }
+.keys button:active { background: var(--fill-strong); }
+.field { width: 100%; border: 0; outline: none; background: var(--fill); padding: 10px 12px; border-radius: 9px; }
+.primary { width: 100%; min-height: 54px; border-radius: 16px; color: #fff; font-weight: 600; background: var(--accent); }
+.primary.addmode { background: var(--green); }
+.primary:disabled { background: rgba(142, 142, 147, 0.4); }
+.primary:not(:disabled):active { opacity: 0.8; }
+.explain { font-size: 15px; color: var(--secondary); text-align: center; margin: 0; }
+.spacer { flex: 1; }
+
+/* action sheet + toast */
+.action { position: fixed; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 8px); z-index: 21; max-width: 544px; margin: 0 auto; transform: translateY(130%); transition: transform 0.3s cubic-bezier(.2,.9,.3,1); display: flex; flex-direction: column; gap: 8px; }
+.action.show { transform: none; }
+.action .box { background: var(--material); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); border-radius: 14px; overflow: hidden; text-align: center; }
+.action .msg { padding: 14px 16px; font-size: 13px; color: var(--secondary); }
+.action .msg b { display: block; color: var(--secondary); font-weight: 600; margin-bottom: 4px; }
+.action button { width: 100%; min-height: 56px; font-size: 20px; color: var(--accent); border-top: 0.5px solid var(--sep); }
+.action button.destructive { color: var(--red); }
+.action button.cancel { font-weight: 600; border: 0; }
+.toast {
+  position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 76px); z-index: 30; max-width: 528px; margin: 0 auto;
+  display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-radius: 999px;
+  background: var(--material); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: 0 4px 12px var(--shadow);
+  transform: translateY(160%); opacity: 0; transition: transform 0.3s, opacity 0.3s; pointer-events: none;
+}
+.toast.show { transform: none; opacity: 1; pointer-events: auto; }
+.toast .grow { flex: 1; }
+.toast button { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="pager" id="pager">
+    <section class="page" id="page-today" aria-label="Today"></section>
+    <section class="page" id="page-cal" aria-label="Calendar"></section>
+  </div>
+  <nav class="tabbar" id="tabbar">
+    <button data-act="tab" data-i="0"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>Today</button>
+    <button data-act="tab" data-i="1"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar</button>
+  </nav>
+</div>
+<div id="toast" class="toast" role="status"></div>
+
+<script>
+"use strict";
+/* ====================================================================
+   Daily Budget — web version.
+   The budget math is a straight port of BudgetStore.swift / Models.swift,
+   and backups use the same JSON as the iPhone app, so a backup exported
+   here can be imported into the full app (and the other way round).
+   ==================================================================== */
+
+// ---------- Dates (local time, like Calendar.current) ----------
+const DAY = 864e5;
+const REF = Date.UTC(2001, 0, 1); // Swift's Date reference point, for backup files
+const sod = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const addDays = (t, n) => { const d = new Date(t); d.setDate(d.getDate() + n); return d.getTime(); };
+const daysBetween = (a, b) => Math.round((sod(b) - sod(a)) / DAY);
+const weekStart = t => { const d = new Date(sod(t)); d.setDate(d.getDate() - d.getDay()); return d.getTime(); }; // weeks start Sunday
+const sameDay = (a, b) => sod(a) === sod(b);
+const isToday = t => sameDay(t, Date.now());
+const isTomorrow = t => sameDay(t, addDays(Date.now(), 1));
+const monthStart = t => { const d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); };
+const sameMonth = (a, b) => { const x = new Date(a), y = new Date(b); return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth(); };
+const fmtDay = t => new Date(t).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+const fmtLongDay = t => new Date(t).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+const fmtTime = t => new Date(t).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+const fmtWeekday = t => new Date(t).toLocaleDateString(undefined, { weekday: "long" });
+const toDateInput = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const fromDateInput = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).getTime(); };
+
+// ---------- Money ----------
+const fmt = new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" });
+const money = c => fmt.format(c / 100);
+const centsText = c => (c / 100).toFixed(2);
+function parseCents(text) {
+  const cleaned = String(text).replace(/,/g, ".").replace(/[^0-9.]/g, "");
+  if (!cleaned || (cleaned.match(/\./g) || []).length > 1 || cleaned === ".") return null;
+  const v = Number(cleaned);
+  return Number.isFinite(v) && v >= 0 ? Math.round(v * 100) : null;
+}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+  const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16);
+})).toUpperCase();
+
+// ---------- Icons ----------
+const I = {
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  reset: '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  left: '<polyline points="15 18 9 12 15 6"/>',
+  right: '<polyline points="9 18 15 12 9 6"/>',
+  bill: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+  subscription: '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+  payday: '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  bell: '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>',
+  undo: '<circle cx="12" cy="12" r="10"/><polyline points="10 8 6 12 10 16"/><path d="M6 12h7a3 3 0 0 1 3 3v1"/>',
+  plusminus: '<line x1="8" y1="3" x2="8" y2="11"/><line x1="4" y1="7" x2="12" y2="7"/><line x1="18" y1="4" x2="7" y2="20"/><line x1="13" y1="17" x2="20" y2="17"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  share: '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  widget: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="18" height="7" rx="1.5"/>',
+  phone: '<rect x="6" y="2" width="12" height="20" rx="3"/><line x1="11" y1="18" x2="13" y2="18"/>'
+};
+const icon = (name, extra = "") => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true" ${extra}>${I[name]}</svg>`;
+
+// ---------- Models ----------
+const THEMES = {
+  mint: ["#34c759", "#00c7be"], ocean: ["#007aff", "#32ade6"], sunset: ["#ff9500", "#ff2d55"],
+  grape: ["#af52de", "#5856d6"], rose: ["#ff2d55", "rgba(255,59,48,0.7)"], graphite: ["#595959", "#8c8c8c"]
+};
+const cap = s => s[0].toUpperCase() + s.slice(1);
+const KINDS = {
+  bill: { label: "Bill", icon: "bill", color: "var(--orange)" },
+  subscription: { label: "Subscription", icon: "subscription", color: "var(--purple)" },
+  payday: { label: "Payday", icon: "payday", color: "var(--green)" }
+};
+const RECUR = {
+  once: { label: "One time", perYear: 0 }, weekly: { label: "Weekly", perYear: 52 }, biweekly: { label: "Every 2 weeks", perYear: 26 },
+  monthly: { label: "Monthly", perYear: 12 }, yearly: { label: "Yearly", perYear: 1 }
+};
+const monthlyCents = e => Math.floor(e.amountCents * RECUR[e.recurrence].perYear / 12);
+
+function defaultPlan() {
+  return { useCalendarIncome: true, incomeCents: 0, incomeFrequency: "biweekly", otherExpensesCents: 0, savingsIsPercent: true, savingsPercent: 20, savingsCents: 0 };
+}
+function defaultSettings() {
+  return { amountCents: 2000, period: "daily", startDate: sod(Date.now()), carryCents: 0, quickStepCents: 100, theme: "mint", appearance: "system", reminderMinutes: 540, plan: defaultPlan() };
+}
+
+function occurs(e, day) {
+  const start = sod(e.date), d = sod(day);
+  if (d < start) return false;
+  const apart = daysBetween(start, d);
+  const sd = new Date(start), dd = new Date(d);
+  const last = new Date(dd.getFullYear(), dd.getMonth() + 1, 0).getDate();
+  switch (e.recurrence) {
+    case "once": return apart === 0;
+    case "weekly": return apart % 7 === 0;
+    case "biweekly": return apart % 14 === 0;
+    case "monthly": return dd.getDate() === Math.min(sd.getDate(), last);
+    case "yearly": return dd.getMonth() === sd.getMonth() && dd.getDate() === Math.min(sd.getDate(), last);
+  }
+  return false;
+}
+
+// ---------- Store ----------
+const KEY = "dailybudget.v1";
+let S = { settings: defaultSettings(), spends: [], events: [] };
+
+function normalize(raw, dateFrom) {
+  // Tolerant like the Swift decoder: anything missing falls back to defaults.
+  if (!raw || typeof raw !== "object" || !raw.settings || !Array.isArray(raw.spends) || !Array.isArray(raw.events)) throw new Error("bad backup");
+  const d = defaultSettings(), s = raw.settings;
+  const pick = (v, ok, fb) => (ok(v) ? v : fb);
+  const isInt = v => Number.isFinite(v);
+  const settings = {
+    amountCents: pick(s.amountCents, isInt, d.amountCents),
+    period: pick(s.period, v => v === "daily" || v === "weekly", d.period),
+    startDate: isInt(s.startDate) ? dateFrom(s.startDate) : d.startDate,
+    carryCents: pick(s.carryCents, isInt, 0),
+    quickStepCents: pick(s.quickStepCents, isInt, d.quickStepCents),
+    theme: pick(s.theme, v => v in THEMES, "mint"),
+    appearance: pick(s.appearance, v => ["system", "light", "dark"].includes(v), "system"),
+    reminderMinutes: pick(s.reminderMinutes, isInt, 540),
+    plan: Object.assign(defaultPlan(), s.plan && typeof s.plan === "object" ? s.plan : {})
+  };
+  const spends = raw.spends.map(x => {
+    if (typeof x.id !== "string" || !isInt(x.date) || !isInt(x.cents)) throw new Error("bad spend");
+    return { id: x.id, date: dateFrom(x.date), cents: x.cents, note: typeof x.note === "string" ? x.note : "" };
+  });
+  const events = raw.events.map(e => {
+    if (typeof e.id !== "string" || !isInt(e.date) || !(e.kind in KINDS) || !(e.recurrence in RECUR)) throw new Error("bad event");
+    return { id: e.id, title: String(e.title ?? ""), amountCents: isInt(e.amountCents) ? e.amountCents : 0, kind: e.kind, recurrence: e.recurrence,
+      date: dateFrom(e.date), remindDaysBefore: isInt(e.remindDaysBefore) ? e.remindDaysBefore : null };
+  });
+  return { settings, spends, events };
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) S = normalize(JSON.parse(raw), t => t);
+  } catch (e) { /* storage blocked or corrupt: start fresh */ }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* private mode: keep working in memory */ }
+  render();
+}
+
+// Backups use the iPhone app's format (dates as seconds since 2001) so they move between the two.
+const toRef = ms => (ms - REF) / 1000;
+const fromRef = s => Math.round(s * 1000 + REF);
+function backupJSON() {
+  const snap = {
+    settings: { ...S.settings, startDate: toRef(S.settings.startDate) },
+    spends: S.spends.map(x => ({ ...x, date: toRef(x.date) })),
+    events: S.events.map(e => {
+      const o = { ...e, date: toRef(e.date) };
+      if (o.remindDaysBefore == null) delete o.remindDaysBefore;
+      return o;
+    })
+  };
+  return JSON.stringify(snap, null, 2);
+}
+function restore(text) { S = normalize(JSON.parse(text), fromRef); save(); }
+
+// --- Budget math (BudgetStore.swift) ---
+function payouts(day) {
+  const s = S.settings;
+  if (s.period === "daily") return daysBetween(s.startDate, day) + 1;
+  return Math.round(daysBetween(weekStart(s.startDate), weekStart(day)) / 7) + 1;
+}
+function balanceCents(day = Date.now()) {
+  const s = S.settings, d = sod(day);
+  if (d < s.startDate) return s.carryCents;
+  const end = addDays(d, 1);
+  const spent = S.spends.filter(x => x.date >= s.startDate && x.date < end).reduce((a, x) => a + x.cents, 0);
+  return s.carryCents + s.amountCents * payouts(d) - spent;
+}
+const nextPayout = () => S.settings.period === "daily" ? addDays(sod(Date.now()), 1) : addDays(weekStart(Date.now()), 7);
+function spentThisWeekCents() {
+  const a = weekStart(Date.now()), b = addDays(a, 7);
+  return S.spends.filter(x => x.cents > 0 && x.date >= a && x.date < b).reduce((t, x) => t + x.cents, 0);
+}
+const spendsOn = day => S.spends.filter(x => sameDay(x.date, day)).sort((a, b) => b.date - a.date);
+const spentOn = day => spendsOn(day).filter(x => x.cents > 0).reduce((t, x) => t + x.cents, 0);
+const addedOn = day => spendsOn(day).filter(x => x.cents < 0).reduce((t, x) => t - x.cents, 0);
+const spentInMonth = m => S.spends.filter(x => x.cents > 0 && sameMonth(x.date, m)).reduce((t, x) => t + x.cents, 0);
+const eventsOn = day => S.events.filter(e => occurs(e, day)).sort((a, b) => a.title.localeCompare(b.title));
+function upcoming(days = 21, limit = 8) {
+  const out = [], today = sod(Date.now());
+  for (let i = 0; i < days && out.length < limit; i++) {
+    const day = addDays(today, i);
+    for (const e of eventsOn(day)) out.push({ date: day, event: e });
+  }
+  return out.slice(0, limit);
+}
+
+function addSpend(cents, note = "") { if (cents > 0) { S.spends.push({ id: uuid(), date: Date.now(), cents, note: note.trim() }); save(); } }
+function addMoney(cents, note = "") { if (cents > 0) { S.spends.push({ id: uuid(), date: Date.now(), cents: -cents, note: note.trim() }); save(); } }
+function updateBudget(amountCents, period) {
+  const s = S.settings, before = balanceCents(), delta = amountCents - s.amountCents;
+  s.startDate = sod(Date.now()); s.amountCents = amountCents; s.period = period; s.carryCents = 0;
+  s.carryCents = before + delta - balanceCents();
+  save();
+}
+function setBalance(cents) { S.settings.carryCents += cents - balanceCents(); save(); }
+function resetBudget() {
+  const undo = JSON.stringify(S);
+  S.settings.startDate = sod(Date.now()); S.settings.carryCents = 0; S.spends = [];
+  save();
+  return undo;
+}
+
+// ---------- UI state ----------
+let tab = 0;
+try { tab = Number(localStorage.getItem("dailybudget.tab")) === 1 ? 1 : 0; } catch (e) {}
+let showAllSpends = false;
+let calMonth = monthStart(Date.now());
+let selected = sod(Date.now());
+
+function applyTheme() {
+  const s = S.settings, [c1, c2] = THEMES[s.theme], root = document.documentElement;
+  root.style.setProperty("--accent", c1);
+  root.style.setProperty("--c1", c1);
+  root.style.setProperty("--c2", c2);
+  if (s.appearance === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", s.appearance);
+}
+
+// ---------- Today ----------
+function chip({ event: e, date }) {
+  const k = KINDS[e.kind];
+  const when = isToday(date) ? "Today" : isTomorrow(date) ? "Tomorrow" : fmtDay(date);
+  const amt = e.amountCents > 0 ? `${e.kind === "payday" ? "+" : "−"}${money(e.amountCents)}` : k.label;
+  return `<button class="chip" style="--k:${k.color}" data-act="edit-event" data-id="${e.id}">
+    <span class="when">${icon(k.icon)}${when}</span><span class="t">${esc(e.title)}</span><span class="a mono">${amt}</span></button>`;
+}
+function eventRow(e, date) {
+  const k = KINDS[e.kind];
+  const sub = date ? `${isToday(date) ? "Today" : isTomorrow(date) ? "Tomorrow" : fmtDay(date)} · ${RECUR[e.recurrence].label}` : `${k.label} · ${RECUR[e.recurrence].label}`;
+  const amt = e.amountCents > 0 ? `<span class="mono ${e.kind === "payday" ? "added" : ""}">${e.kind === "payday" ? "+" : "−"}${money(e.amountCents)}</span>` : "";
+  return `<button class="row" data-act="edit-event" data-id="${e.id}">
+    <span class="kindicon" style="--k:${k.color}">${icon(k.icon)}</span>
+    <span class="grow"><span style="font-weight:500">${esc(e.title)}</span><span class="small">${sub}${e.remindDaysBefore != null ? icon("bell") : ""}</span></span>${amt}</button>`;
+}
+const signed = x => x.cents < 0 ? `+${money(-x.cents)}` : `−${money(x.cents)}`;
+
+function renderToday() {
+  const s = S.settings, bal = balanceCents(), over = bal < 0;
+  const sub = s.period === "daily" ? `${money(s.amountCents)} per day · rolls over` : `${money(s.amountCents)} per week · next ${fmtWeekday(nextPayout())}`;
+  const week = s.period === "weekly" ? `<div class="weekline ${spentThisWeekCents() > s.amountCents ? "over" : ""}">This week: ${money(spentThisWeekCents())} of ${money(s.amountCents)} spent</div>` : "";
+  const ups = upcoming();
+  const todays = spendsOn(Date.now());
+  const shown = showAllSpends ? todays : todays.slice(0, 3);
+  document.getElementById("page-today").innerHTML = `<div class="content">
+    <div class="titlebar"><h1>Today</h1>
+      <button class="iconbtn" style="font-size:19px" data-act="reset" aria-label="Reset budget">${icon("reset")}</button>
+      <button class="iconbtn" data-act="settings" aria-label="Settings">${icon("gear")}</button></div>
+    <div class="subline">${sub}</div>${week}
+    <button class="circle ${over ? "over" : ""}" id="circle" data-act="quick">
+      <span class="amt rounded mono" id="amt">${money(bal)}</span><span class="hint">tap to spend ${money(s.quickStepCents)}</span></button>
+    <button class="capsule" data-act="enter">${icon("plusminus")}Enter amount</button>
+    ${ups.length ? `<div class="section"><h2>Coming up</h2><div class="chips">${ups.map(chip).join("")}</div></div>` : ""}
+    ${todays.length ? `<div class="section"><h2>Today · ${money(todays.filter(x => x.cents > 0).reduce((t, x) => t + x.cents, 0))} spent</h2>
+      ${shown.map(x => `<div class="row">
+        <button class="grow" data-act="note" data-id="${x.id}" style="text-align:left">
+          <span class="note ${x.note ? "" : "empty"}">${x.note ? esc(x.note) : "Add a note"}</span><span class="small">${fmtTime(x.date)}</span></button>
+        <span class="mono ${x.cents < 0 ? "added" : ""}">${signed(x)}</span>
+        <button class="undo" data-act="undo-spend" data-id="${x.id}" aria-label="Undo">${icon("undo")}</button></div>`).join("")}
+      ${todays.length > 3 ? `<button class="linkbtn" data-act="toggle-all">${showAllSpends ? "Show less" : `Show all ${todays.length}`}</button>` : ""}
+    </div>` : ""}
+  </div>`;
+  fitAmount();
+}
+function fitAmount() {
+  // Like minimumScaleFactor: shrink the balance text until it fits the circle.
+  const el = document.getElementById("amt");
+  if (!el) return;
+  let size = 54;
+  el.style.fontSize = size + "px";
+  while (el.scrollWidth > 232 && size > 27) { size -= 2; el.style.fontSize = size + "px"; }
+}
+
+// ---------- Calendar ----------
+function renderCalendar() {
+  const first = new Date(calMonth);
+  const count = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const lead = first.getDay();
+  let cells = "";
+  for (let i = 0; i < lead; i++) cells += `<div></div>`;
+  for (let n = 0; n < count; n++) {
+    const day = addDays(calMonth, n), items = eventsOn(day), spent = spentOn(day), added = addedOn(day);
+    const tint = items[0] ? KINDS[items[0].kind].color : null;
+    const money1 = spent > 0 ? `<span class="money neg mono">−${money(spent)}</span>` : added > 0 ? `<span class="money pos mono">+${money(added)}</span>` : "";
+    cells += `<button class="day ${sameDay(day, selected) ? "sel" : ""}" ${tint ? `style="--k:${tint}"` : ""} data-act="select" data-day="${day}">
+      <span class="n ${isToday(day) ? "today" : tint ? "b" : ""}">${n + 1}</span>
+      ${items.slice(0, 2).map(e => `<span class="pill" style="--k:${KINDS[e.kind].color}">${esc(e.title)}</span>`).join("")}
+      ${items.length > 2 ? `<span class="more">+${items.length - 2} more</span>` : ""}${money1}</button>`;
+  }
+  const items = eventsOn(selected), sp = spendsOn(selected), added = addedOn(selected);
+  document.getElementById("page-cal").innerHTML = `<div class="content" style="gap:16px">
+    <div class="titlebar"><h1>Calendar</h1><button class="iconbtn" data-act="add-event" aria-label="Add event">${icon("plus")}</button></div>
+    <div class="calhead"><button data-act="month" data-by="-1" aria-label="Previous month">${icon("left")}</button>
+      <div><div class="m">${first.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</div><div class="s">Spent this month: ${money(spentInMonth(calMonth))}</div></div>
+      <button data-act="month" data-by="1" aria-label="Next month">${icon("right")}</button></div>
+    <div class="weekdays">${["S", "M", "T", "W", "T", "F", "S"].map(d => `<div>${d}</div>`).join("")}</div>
+    <div class="grid">${cells}</div>
+    <div class="section"><h2>${fmtLongDay(selected)}</h2>
+      ${!items.length && !sp.length ? `<div class="sec">Nothing scheduled</div>` : ""}
+      ${items.map(e => eventRow(e)).join("")}
+      ${sp.length ? `<h2 style="margin-top:8px">Spent · ${money(spentOn(selected))}${added > 0 ? ` · Added ${money(added)}` : ""}</h2>
+        ${sp.map(x => `<div class="row"><span class="grow"><span class="${x.note ? "" : "sec"}">${x.note ? esc(x.note) : x.cents < 0 ? "Added" : "Spend"}</span>
+          <span class="small">${fmtTime(x.date)}</span></span><span class="mono ${x.cents < 0 ? "added" : ""}">${signed(x)}</span></div>`).join("")}` : ""}
+    </div></div>`;
+}
+
+function render() {
+  applyTheme();
+  renderToday();
+  renderCalendar();
+  document.querySelectorAll(".tabbar button").forEach((b, i) => b.classList.toggle("on", i === tab));
+}
+
+// ---------- Tabs (swipe or tap) ----------
+const pager = document.getElementById("pager");
+function goTab(i, smooth = true) {
+  tab = i;
+  pager.scrollTo({ left: i * pager.clientWidth, behavior: smooth ? "smooth" : "auto" });
+  document.querySelectorAll(".tabbar button").forEach((b, j) => b.classList.toggle("on", j === tab));
+  try { localStorage.setItem("dailybudget.tab", String(i)); } catch (e) {}
+}
+pager.addEventListener("scroll", () => {
+  const i = Math.round(pager.scrollLeft / Math.max(1, pager.clientWidth));
+  if (i !== tab) {
+    tab = i;
+    document.querySelectorAll(".tabbar button").forEach((b, j) => b.classList.toggle("on", j === tab));
+    try { localStorage.setItem("dailybudget.tab", String(i)); } catch (e) {}
+  }
+}, { passive: true });
+window.addEventListener("resize", () => { pager.scrollLeft = tab * pager.clientWidth; fitAmount(); });
+
+// ---------- Sheets ----------
+const sheets = [];
+function openSheet({ cls = "", build }) {
+  const scrim = document.createElement("div");
+  scrim.className = "scrim";
+  const el = document.createElement("div");
+  el.className = "sheet " + cls;
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-modal", "true");
+  document.body.append(scrim, el);
+  const sheet = { el, scrim, close: () => closeSheet(sheet) };
+  scrim.addEventListener("click", sheet.close);
+  build(sheet);
+  sheets.push(sheet);
+  requestAnimationFrame(() => requestAnimationFrame(() => { scrim.classList.add("show"); el.classList.add("show"); }));
+  return sheet;
+}
+function closeSheet(sheet) {
+  const i = sheets.indexOf(sheet);
+  if (i < 0) return;
+  sheets.splice(i, 1);
+  sheet.el.classList.remove("show");
+  sheet.scrim.classList.remove("show");
+  setTimeout(() => { sheet.el.remove(); sheet.scrim.remove(); }, 350);
+  if (sheet.onClose) sheet.onClose();
+}
+
+function confirmAction({ title, message, action, destructive = true, onConfirm }) {
+  const scrim = document.createElement("div");
+  scrim.className = "scrim";
+  scrim.style.zIndex = 20;
+  const el = document.createElement("div");
+  el.className = "action";
+  el.innerHTML = `<div class="box"><div class="msg"><b>${esc(title)}</b>${esc(message)}</div><button class="${destructive ? "destructive" : ""}" data-x="ok">${esc(action)}</button></div>
+    <div class="box"><button class="cancel" data-x="cancel">Cancel</button></div>`;
+  document.body.append(scrim, el);
+  const close = () => { el.classList.remove("show"); scrim.classList.remove("show"); setTimeout(() => { el.remove(); scrim.remove(); }, 300); };
+  scrim.onclick = close;
+  el.querySelector('[data-x="cancel"]').onclick = close;
+  el.querySelector('[data-x="ok"]').onclick = () => { close(); onConfirm(); };
+  requestAnimationFrame(() => requestAnimationFrame(() => { scrim.classList.add("show"); el.classList.add("show"); }));
+}
+
+let toastTimer;
+function toast(html, onAction) {
+  const el = document.getElementById("toast");
+  el.innerHTML = html;
+  const b = el.querySelector("button");
+  if (b && onAction) b.onclick = () => { onAction(); hideToast(); };
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 8000);
+}
+function hideToast() { document.getElementById("toast").classList.remove("show"); }
+
+const seg = (name, options, value) => `<div class="seg" data-seg="${name}">${options.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(v) === String(value) ? "on" : ""}">${l}</button>`).join("")}</div>`;
+function bindSeg(root, name, onChange) {
+  const box = root.querySelector(`[data-seg="${name}"]`);
+  box.querySelectorAll("button").forEach(b => b.onclick = () => {
+    box.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    onChange(b.dataset.v);
+  });
+}
+
+// --- Amount keypad (AmountEntrySheet.swift): fills from the right, 4 4 6 → $4.46 ---
+function amountSheet(mode = "spend") {
+  let digits = "", adding = false, note = "";
+  openSheet({ cls: "full plain", build(sheet) {
+    const draw = () => {
+      const cents = Number(digits || 0);
+      const label = mode === "setBalance" ? `Set balance to ${money(cents)}` : cents === 0 ? "Enter an amount" : adding ? `Add ${money(cents)}` : `Spend ${money(cents)}`;
+      sheet.el.querySelector(".bigamt").textContent = money(cents);
+      sheet.el.querySelector(".bigamt").classList.toggle("zero", cents === 0);
+      const btn = sheet.el.querySelector(".primary");
+      btn.textContent = label;
+      btn.disabled = mode === "spend" && cents === 0;
+      btn.classList.toggle("addmode", adding);
+      const n = sheet.el.querySelector(".field");
+      if (n) n.placeholder = adding ? "Where's it from? (optional)" : "What was it for? (optional)";
+    };
+    sheet.el.innerHTML = `<div class="grab"></div><div class="navbar"><button class="l" data-x="cancel">Cancel</button><span></span><span></span></div>
+      <div class="body"><div class="keypad-wrap">
+        ${mode === "spend" ? seg("type", [["spend", "Spend"], ["add", "Add money"]], "spend") : `<p class="explain">Set today's balance. Your ${money(S.settings.amountCents)} budget stays the same.</p>`}
+        <div class="spacer"></div>
+        <div class="bigamt rounded mono zero">$0.00</div>
+        ${mode === "spend" ? `<input class="field" type="text" autocomplete="off" enterkeyhint="done">` : ""}
+        <div class="keys">${["1", "2", "3", "4", "5", "6", "7", "8", "9", "00", "0", "⌫"].map(k => `<button type="button" data-k="${k}" aria-label="${k === "⌫" ? "Delete" : k}">${k}</button>`).join("")}</div>
+        <button class="primary" type="button"></button>
+      </div></div>`;
+    sheet.el.querySelector('[data-x="cancel"]').onclick = sheet.close;
+    if (mode === "spend") {
+      bindSeg(sheet.el, "type", v => { adding = v === "add"; draw(); });
+      const f = sheet.el.querySelector(".field");
+      f.oninput = () => { note = f.value; };
+      f.onkeydown = e => { if (e.key === "Enter") f.blur(); };
+    }
+    sheet.el.querySelectorAll("[data-k]").forEach(b => b.onclick = () => {
+      const key = b.dataset.k;
+      if (key === "⌫") digits = digits.slice(0, -1);
+      else if (digits.length + key.length <= 8) { digits = String(Number(digits + key)); if (digits === "0") digits = ""; }
+      draw();
+    });
+    sheet.el.querySelector(".primary").onclick = () => {
+      const cents = Number(digits || 0);
+      if (mode === "setBalance") setBalance(cents);
+      else if (adding) addMoney(cents, note); else addSpend(cents, note);
+      sheet.close();
+      if (sheet.after) sheet.after();
+    };
+    draw();
+  } });
+  return sheets[sheets.length - 1];
+}
+
+function noteSheet(spend) {
+  openSheet({ cls: "plain", build(sheet) {
+    sheet.el.innerHTML = `<div class="grab"></div><div class="body" style="padding-top:16px;display:flex;flex-direction:column;gap:16px;align-items:center">
+      <div class="rounded ${spend.cents < 0 ? "added" : ""}" style="font-size:24px;font-weight:700">${signed(spend)}</div>
+      <input class="field" type="text" placeholder="What was it for?" value="${esc(spend.note)}" enterkeyhint="done">
+      <button class="primary" style="width:auto;min-height:44px;padding:0 24px;border-radius:12px">Save</button></div>`;
+    const f = sheet.el.querySelector(".field");
+    const done = () => { spend.note = f.value.trim(); save(); sheet.close(); };
+    f.onkeydown = e => { if (e.key === "Enter") done(); };
+    sheet.el.querySelector(".primary").onclick = done;
+    setTimeout(() => f.focus(), 350);
+  } });
+}
+
+// --- Event editor (EventEditor in CalendarView.swift) ---
+function eventSheet(existing) {
+  const isNew = !existing;
+  const ev = existing ? { ...existing } : { id: uuid(), title: "", amountCents: 0, kind: "bill", recurrence: "monthly", date: selected, remindDaysBefore: null };
+  let amountText = ev.amountCents > 0 ? centsText(ev.amountCents) : "";
+  openSheet({ cls: "full", build(sheet) {
+    const draw = () => {
+      const days = ev.remindDaysBefore;
+      sheet.el.querySelector(".ttl").textContent = isNew ? `New ${KINDS[ev.kind].label}` : "Edit";
+      sheet.el.querySelector("#remind").innerHTML = `
+        <div class="cell"><span class="lbl">Remind me</span><button type="button" class="toggle ${days != null ? "on" : ""}" data-x="toggle" role="switch" aria-checked="${days != null}" aria-label="Remind me"></button></div>
+        ${days != null ? `<div class="cell"><span class="lbl">${days === 0 ? "On the day" : days === 1 ? "1 day before" : `${days} days before`}</span>
+          <div class="stepper"><button type="button" data-x="minus" aria-label="Fewer days">−</button><button type="button" data-x="plus" aria-label="More days">+</button></div></div>` : ""}`;
+      sheet.el.querySelector("#remind-f").textContent = days != null
+        ? "Saved with the event. Notifications only arrive in the full iPhone app."
+        : "";
+      const r = sheet.el.querySelector("#remind");
+      r.querySelector('[data-x="toggle"]').onclick = () => { ev.remindDaysBefore = ev.remindDaysBefore == null ? 1 : null; draw(); };
+      const m = r.querySelector('[data-x="minus"]'), p = r.querySelector('[data-x="plus"]');
+      if (m) m.onclick = () => { ev.remindDaysBefore = Math.max(0, ev.remindDaysBefore - 1); draw(); };
+      if (p) p.onclick = () => { ev.remindDaysBefore = Math.min(30, ev.remindDaysBefore + 1); draw(); };
+    };
+    sheet.el.innerHTML = `<div class="grab"></div>
+      <div class="navbar"><button class="l" data-x="cancel">Cancel</button><span class="ttl"></span><button class="r" data-x="save">Save</button></div>
+      <div class="body">
+        <div class="group" style="margin-top:8px"><div class="cell">${seg("kind", Object.entries(KINDS).map(([k, v]) => [k, v.label]), ev.kind)}</div>
+          <div class="cell"><input class="txt" id="ev-title" type="text" placeholder="Name (e.g. Rent, Netflix, Paycheck)" value="${esc(ev.title)}"></div>
+          <div class="cell"><span class="lbl">Amount</span><input class="num" id="ev-amt" inputmode="decimal" placeholder="0.00" value="${amountText}"></div>
+          <div class="cell"><span class="lbl">Date</span><input id="ev-date" type="date" value="${toDateInput(ev.date)}"></div>
+          <div class="cell"><span class="lbl">Repeats</span><select id="ev-rec">${Object.entries(RECUR).map(([k, v]) => `<option value="${k}" ${k === ev.recurrence ? "selected" : ""}>${v.label}</option>`).join("")}</select><span class="chev">${icon("right")}</span></div>
+        </div>
+        <div class="group" style="margin-top:22px" id="remind"></div><div class="group-f" id="remind-f"></div>
+        ${isNew ? "" : `<div class="group" style="margin-top:22px"><button class="cell btn destructive" data-x="delete">Delete</button></div>`}
+      </div>`;
+    bindSeg(sheet.el, "kind", v => { ev.kind = v; draw(); });
+    sheet.el.querySelector('[data-x="cancel"]').onclick = sheet.close;
+    sheet.el.querySelector('[data-x="save"]').onclick = () => {
+      ev.title = sheet.el.querySelector("#ev-title").value.trim() || KINDS[ev.kind].label;
+      ev.amountCents = parseCents(sheet.el.querySelector("#ev-amt").value) ?? 0;
+      const dv = sheet.el.querySelector("#ev-date").value;
+      if (dv) ev.date = fromDateInput(dv);
+      ev.recurrence = sheet.el.querySelector("#ev-rec").value;
+      const i = S.events.findIndex(e => e.id === ev.id);
+      if (i >= 0) S.events[i] = ev; else S.events.push(ev);
+      save();
+      sheet.close();
+    };
+    const del = sheet.el.querySelector('[data-x="delete"]');
+    if (del) del.onclick = () => { S.events = S.events.filter(e => e.id !== ev.id); save(); sheet.close(); };
+    draw();
+  } });
+}
+
+// --- Settings (SettingsView.swift) with the paycheck planner as a pushed page ---
+function settingsSheet() {
+  const s = S.settings;
+  let period = s.period, amountText = centsText(s.amountCents), stepText = centsText(s.quickStepCents);
+  openSheet({ cls: "full", build(sheet) {
+    const body = () => sheet.el.querySelector(".body");
+    const nav = (left, title, right) => {
+      sheet.el.querySelector(".navbar").innerHTML = `${left}<span class="ttl">${title}</span>${right}`;
+    };
+
+    function showMain() {
+      nav(`<button class="l" data-x="cancel">Cancel</button>`, "Settings", `<button class="r" data-x="save">Save</button>`);
+      const t = S.settings.theme;
+      body().innerHTML = `
+        <div class="group" style="margin-top:8px">
+          <div class="cell">${seg("period", [["daily", "Per day"], ["weekly", "Per week"]], period)}</div>
+          <div class="cell"><span class="lbl">Budget</span><input class="num" id="st-amt" inputmode="decimal" placeholder="0.00" value="${amountText}"></div>
+          <button class="cell btn" data-x="planner"><span class="tint" style="display:flex">${icon("payday")}</span><span class="lbl" style="color:var(--text)">Plan from my paychecks</span><span class="chev">${icon("right")}</span></button>
+        </div>
+        <div class="group-f" id="period-f"></div>
+        <div class="group-h">Theme</div>
+        <div class="group"><div class="themes">${Object.entries(THEMES).map(([k, [a, b]]) => `<button data-theme-pick="${k}">
+            <span class="dot" style="background:linear-gradient(135deg,${a},${b})">${k === t ? icon("check") : ""}</span>${cap(k)}</button>`).join("")}</div>
+          <div class="cell" style="padding-bottom:12px">${seg("appearance", [["system", "System"], ["light", "Light"], ["dark", "Dark"]], S.settings.appearance)}</div>
+        </div>
+        <div class="group" style="margin-top:22px"><button class="cell" data-x="balance"><span class="lbl">Adjust today's balance</span><span class="val mono">${money(balanceCents())}</span></button></div>
+        <div class="group-f">For corrections, like extra cash you didn't track. Your budget amount stays the same.</div>
+        <div class="group" style="margin-top:22px"><div class="cell"><span class="lbl">Quick spend</span><input class="num" id="st-step" inputmode="decimal" placeholder="0.00" value="${stepText}"></div></div>
+        <div class="group-f">How much the big circle subtracts per tap.</div>
+        <div class="group-h">Backup</div>
+        <div class="group">
+          <button class="cell btn" data-x="export">${icon("share")}<span class="lbl">Export backup</span></button>
+          <button class="cell btn" data-x="import">${icon("download")}<span class="lbl">Import backup</span></button>
+        </div>
+        <div class="group-f">Saves your budget, spending and calendar to a file. The full iPhone app can import it too, so nothing is lost if you switch.</div>
+        <div class="group-h">Get the full app</div>
+        <div class="group"><div class="fullapp">
+          <div class="f"><span class="kindicon">${icon("widget")}</span><span>Home Screen and Lock Screen widgets with your balance and upcoming bills</span></div>
+          <div class="f"><span class="kindicon">${icon("bell")}</span><span>Reminders before bills, subscriptions and paydays</span></div>
+          <div class="f"><span class="kindicon">${icon("phone")}</span><span>Native iPhone app, with your data carried over from a backup</span></div>
+        </div></div>
+        <input type="file" id="st-file" accept=".json,application/json" hidden>`;
+      const pf = () => body().querySelector("#period-f").textContent = period === "weekly"
+        ? "The full amount is added at the start of each week. Unspent money rolls over."
+        : "The amount is added each day. Unspent money rolls over.";
+      pf();
+      bindSeg(body(), "period", v => { period = v; pf(); });
+      bindSeg(body(), "appearance", v => { S.settings.appearance = v; save(); });
+      body().querySelector("#st-amt").oninput = e => { amountText = e.target.value; };
+      body().querySelector("#st-step").oninput = e => { stepText = e.target.value; };
+      body().querySelectorAll("[data-theme-pick]").forEach(b => b.onclick = () => {
+        S.settings.theme = b.dataset.themePick; save();
+        const top = body().scrollTop; showMain(); body().scrollTop = top;
+      });
+      sheet.el.querySelector('[data-x="cancel"]').onclick = sheet.close;
+      sheet.el.querySelector('[data-x="save"]').onclick = () => {
+        const c = parseCents(amountText);
+        if (c != null) updateBudget(c, period);
+        const st = parseCents(stepText);
+        if (st != null && st > 0) { S.settings.quickStepCents = Math.max(1, st); save(); }
+        sheet.close();
+      };
+      body().querySelector('[data-x="planner"]').onclick = showPlanner;
+      body().querySelector('[data-x="balance"]').onclick = () => {
+        const a = amountSheet("setBalance");
+        a.after = () => { const top = body().scrollTop; showMain(); body().scrollTop = top; };
+      };
+      body().querySelector('[data-x="export"]').onclick = exportBackup;
+      const file = body().querySelector("#st-file");
+      body().querySelector('[data-x="import"]').onclick = () => file.click();
+      file.onchange = async () => {
+        const f = file.files[0];
+        if (!f) return;
+        const text = await f.text();
+        file.value = "";
+        try { normalize(JSON.parse(text), fromRef); } catch (e) { toast(`<span class="grow">Couldn't import. That file isn't a Daily Budget backup.</span>`); return; }
+        confirmAction({ title: "Replace all your data with this backup?", message: "Your current budget, spending and calendar will be overwritten.", action: "Replace",
+          onConfirm: () => {
+            restore(text);
+            period = S.settings.period; amountText = centsText(S.settings.amountCents); stepText = centsText(S.settings.quickStepCents);
+            showMain();
+          } });
+      };
+    }
+
+    // Paycheck planner (PlannerView.swift)
+    function showPlanner() {
+      const plan = { ...S.settings.plan };
+      let pPeriod = S.settings.period;
+      let incomeText = plan.incomeCents > 0 ? centsText(plan.incomeCents) : "";
+      let otherText = plan.otherExpensesCents > 0 ? centsText(plan.otherExpensesCents) : "";
+      let savingsText = plan.savingsIsPercent ? String(plan.savingsPercent) : (plan.savingsCents > 0 ? centsText(plan.savingsCents) : "");
+      const paydays = S.events.filter(e => e.kind === "payday" && e.recurrence !== "once");
+      const bills = S.events.filter(e => e.kind !== "payday" && e.recurrence !== "once");
+
+      const incomeMonthly = () => plan.useCalendarIncome
+        ? paydays.reduce((t, e) => t + monthlyCents(e), 0)
+        : Math.floor((parseCents(incomeText) ?? 0) * RECUR[plan.incomeFrequency].perYear / 12);
+      const expensesMonthly = () => bills.reduce((t, e) => t + monthlyCents(e), 0) + (parseCents(otherText) ?? 0);
+      const savingsMonthly = () => plan.savingsIsPercent
+        ? Math.trunc(incomeMonthly() * (parseInt(savingsText, 10) || 0) / 100)
+        : parseCents(savingsText) ?? 0;
+      const spendable = () => incomeMonthly() - expensesMonthly() - savingsMonthly();
+      const suggested = () => Math.max(0, Math.trunc(spendable() * 12 / (pPeriod === "daily" ? 365 : 52) / 100) * 100);
+      const persist = () => {
+        plan.incomeCents = parseCents(incomeText) ?? 0;
+        plan.otherExpensesCents = parseCents(otherText) ?? 0;
+        if (plan.savingsIsPercent) plan.savingsPercent = Math.min(100, parseInt(savingsText, 10) || 0);
+        else plan.savingsCents = parseCents(savingsText) ?? 0;
+        S.settings.plan = { ...plan };
+        save();
+      };
+      const monthlyRow = e => `<div class="cell"><span class="lbl">${esc(e.title)}<small>${money(e.amountCents)} · ${RECUR[e.recurrence].label}</small></span><span class="val mono">${money(monthlyCents(e))}/mo</span></div>`;
+
+      nav(`<button class="l" data-x="back">${icon("left")}Settings</button>`, "Paycheck planner", `<span></span>`);
+      const draw = () => {
+        const top = body().scrollTop;
+        body().innerHTML = `
+          <div class="group-h">Income</div>
+          <div class="group">
+            <div class="cell"><span class="lbl">Use paydays from my calendar</span><button type="button" class="toggle ${plan.useCalendarIncome ? "on" : ""}" data-x="cal-income" role="switch" aria-checked="${plan.useCalendarIncome}" aria-label="Use paydays from my calendar"></button></div>
+            ${plan.useCalendarIncome
+              ? (paydays.length ? paydays.map(monthlyRow).join("") : `<div class="cell sec" style="font-size:13px">No repeating paydays in your calendar yet. Add one there, or turn this off to type your pay in.</div>`)
+              : `<div class="cell"><span class="lbl">Take-home per paycheck</span><input class="num" id="pl-income" inputmode="decimal" placeholder="0.00" value="${esc(incomeText)}"></div>
+                 <div class="cell"><span class="lbl">Paid</span><select id="pl-freq">${["weekly", "biweekly", "monthly"].map(k => `<option value="${k}" ${k === plan.incomeFrequency ? "selected" : ""}>${RECUR[k].label}</option>`).join("")}</select><span class="chev">${icon("right")}</span></div>`}
+          </div>
+          <div class="group-f">Use take-home pay, after tax.</div>
+          <div class="group-h">Bills &amp; subscriptions</div>
+          <div class="group">${bills.map(monthlyRow).join("")}
+            <div class="cell"><span class="lbl">Other monthly costs</span><input class="num" id="pl-other" inputmode="decimal" placeholder="0.00" value="${esc(otherText)}"></div></div>
+          <div class="group-f">${bills.length ? "From your calendar. Add anything else, like groceries or gas, under other costs." : "Repeating bills and subscriptions from your calendar show up here."}</div>
+          <div class="group-h">Savings</div>
+          <div class="group"><div class="cell">${seg("sv", [["pct", "% of income"], ["fixed", "Fixed amount"]], plan.savingsIsPercent ? "pct" : "fixed")}</div>
+            <div class="cell"><span class="lbl">${plan.savingsIsPercent ? "Percent" : "Per month"}</span><input class="num" id="pl-sav" inputmode="${plan.savingsIsPercent ? "numeric" : "decimal"}" placeholder="${plan.savingsIsPercent ? "20" : "0.00"}" value="${esc(savingsText)}"></div></div>
+          <div class="group-h">Per month</div>
+          <div class="group" id="pl-sum"></div>
+          <div class="group" style="margin-top:22px">
+            <div class="cell">${seg("pp", [["daily", "Per day"], ["weekly", "Per week"]], pPeriod)}</div>
+            <div class="planbig"><div class="v rounded mono" id="pl-big"></div><div class="sec" id="pl-per"></div></div>
+            <button class="cell btn center" data-x="apply">Use this budget</button>
+          </div>
+          <div class="group-f" id="pl-foot"></div>`;
+        body().scrollTop = top;
+        const b = body();
+        b.querySelector('[data-x="cal-income"]').onclick = () => { plan.useCalendarIncome = !plan.useCalendarIncome; draw(); };
+        const inc = b.querySelector("#pl-income"); if (inc) inc.oninput = e => { incomeText = e.target.value; sum(); };
+        const fq = b.querySelector("#pl-freq"); if (fq) fq.onchange = e => { plan.incomeFrequency = e.target.value; sum(); };
+        b.querySelector("#pl-other").oninput = e => { otherText = e.target.value; sum(); };
+        b.querySelector("#pl-sav").oninput = e => { savingsText = e.target.value; sum(); };
+        bindSeg(b, "sv", v => {
+          const toPct = v === "pct";
+          if (toPct === plan.savingsIsPercent) return;
+          if (plan.savingsIsPercent) plan.savingsPercent = parseInt(savingsText, 10) || plan.savingsPercent;
+          else plan.savingsCents = parseCents(savingsText) ?? plan.savingsCents;
+          plan.savingsIsPercent = toPct;
+          savingsText = toPct ? String(plan.savingsPercent) : (plan.savingsCents > 0 ? centsText(plan.savingsCents) : "");
+          draw();
+        });
+        bindSeg(b, "pp", v => { pPeriod = v; sum(); });
+        b.querySelector('[data-x="apply"]').onclick = () => {
+          const c = suggested();
+          if (!c) return;
+          persist();
+          updateBudget(c, pPeriod);
+          amountText = centsText(c); period = pPeriod;
+          showMain();
+        };
+        sum();
+      };
+      const sum = () => {
+        const b = body(), sp = spendable(), c = suggested();
+        b.querySelector("#pl-sum").innerHTML = `
+          <div class="cell"><span class="lbl">Income</span><span class="val mono">${money(incomeMonthly())}</span></div>
+          <div class="cell"><span class="lbl">Bills &amp; subscriptions</span><span class="val mono">−${money(expensesMonthly())}</span></div>
+          <div class="cell"><span class="lbl">Savings</span><span class="val mono">−${money(savingsMonthly())}</span></div>
+          <div class="cell"><span class="lbl" style="font-weight:700">Left to spend</span><span class="mono bigval" style="color:${sp < 0 ? "var(--red)" : "var(--text)"}">${money(sp)}</span></div>`;
+        b.querySelector("#pl-big").textContent = money(c);
+        b.querySelector("#pl-per").textContent = pPeriod === "daily" ? "per day" : "per week";
+        const ap = b.querySelector('[data-x="apply"]');
+        ap.disabled = c === 0; ap.style.opacity = c === 0 ? 0.35 : 1;
+        b.querySelector("#pl-foot").textContent = sp <= 0
+          ? "Your costs and savings are more than your income. Try lowering savings."
+          : "Rounded down to the dollar. Starts today, and your current balance is kept.";
+      };
+      sheet.el.querySelector('[data-x="back"]').onclick = () => { persist(); showMain(); };
+      sheet.onClose = persist;
+      draw();
+      body().scrollTop = 0;
+    }
+
+    sheet.el.innerHTML = `<div class="grab"></div><div class="navbar"></div><div class="body"></div>`;
+    showMain();
+  } });
+}
+
+async function exportBackup() {
+  const name = `Daily Budget Backup ${toDateInput(Date.now())}.json`;
+  const blob = new Blob([backupJSON()], { type: "application/json" });
+  try {
+    const file = new File([blob], name, { type: "application/json" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+// ---------- Taps ----------
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]");
+  if (!el) return;
+  const id = el.dataset.id;
+  switch (el.dataset.act) {
+    case "tab": goTab(Number(el.dataset.i)); break;
+    case "quick": {
+      addSpend(S.settings.quickStepCents);
+      const c = document.getElementById("circle");
+      if (c) { c.classList.add("bump"); }
+      break;
+    }
+    case "enter": amountSheet("spend"); break;
+    case "settings": settingsSheet(); break;
+    case "reset":
+      confirmAction({ title: "Reset your budget?", action: `Reset to ${money(S.settings.amountCents)}`,
+        message: "Your balance goes back to the original budget. Rollover and all recorded spending, including on the calendar, will be cleared. You'll have a few seconds to undo.",
+        onConfirm: () => {
+          const undo = resetBudget();
+          toast(`${icon("reset")}<span class="grow">Budget reset</span><button>Undo</button>`, () => { S = JSON.parse(undo); save(); });
+        } });
+      break;
+    case "note": { const sp = S.spends.find(x => x.id === id); if (sp) noteSheet(sp); break; }
+    case "undo-spend": S.spends = S.spends.filter(x => x.id !== id); save(); break;
+    case "toggle-all": showAllSpends = !showAllSpends; renderToday(); break;
+    case "edit-event": { const ev = S.events.find(x => x.id === id); if (ev) eventSheet(ev); break; }
+    case "add-event": eventSheet(null); break;
+    case "month": { const d = new Date(calMonth); calMonth = new Date(d.getFullYear(), d.getMonth() + Number(el.dataset.by), 1).getTime(); renderCalendar(); break; }
+    case "select": selected = Number(el.dataset.day); renderCalendar(); break;
+  }
+});
+
+// Refresh when the app comes back (a new day may have started).
+document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+setInterval(() => { if (!document.hidden && !sheets.length) renderToday(); }, 60000);
+
+load();
+render();
+requestAnimationFrame(() => { pager.scrollLeft = tab * pager.clientWidth; });
+
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {}
+}
+</script>
+</body>
+</html>
